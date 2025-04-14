@@ -5,7 +5,7 @@ import pytest
 import re
 from src.schema import Table, Column, ForeignKey, registry, TableRegistry
 from src.generator import generate_insert_query, generate_insert_queries_in_order, _generate_foreign_key_value
-from src.utils import create_related_schemas_example
+from src.test_utils import create_related_schemas_example
 
 @pytest.fixture
 def clear_registry():
@@ -140,10 +140,13 @@ def test_foreign_key_validity(complex_schema, clear_registry):
     for _, cliente_id in pedido_data:
         assert cliente_id in cliente_ids
 
+    # Extraer IDs de pedidos
     pedido_ids = [pedido_id for pedido_id, _ in pedido_data]
     
+    # Extraer IDs de productos
     producto_ids = extract_ids_from_sql(queries["productos"])
-
+    
+    # Extraer datos de detalles_pedido
     detalle_pedido_lines = queries["detalles_pedido"].split("\n")
     for line in detalle_pedido_lines:
         if line.startswith("("):

@@ -27,6 +27,9 @@ def simple_table():
 @pytest.fixture
 def related_tables():
     """Fixture que proporciona dos tablas relacionadas para testing"""
+    # Asegurarse de limpiar el registro global
+    registry.tables = {}
+    
     # Tabla de usuarios
     users_table = Table(
         name="users",
@@ -36,6 +39,12 @@ def related_tables():
             Column(name="email", type="VARCHAR(100)", faker_provider="email")
         ]
     )
+    
+    # Registrar la tabla de usuarios primero
+    registry.register(users_table)
+    
+    # Generar IDs de usuarios primero
+    users_sql = generate_insert_query(users_table, 5)
     
     # Tabla de posts que depende de users
     posts_table = Table(
@@ -121,10 +130,16 @@ def test_generate_testing_schemas():
     assert len(schemas) >= 5
     
     # Verificar la presencia de tablas importantes
-    table_names = [table.name for table in schemas.keys()]
+    table_names = list(schemas.keys())
     assert "usuarios" in table_names
     assert "articulos" in table_names
     assert "comentarios" in table_names
+    
+    # Verificar que cada elemento es una tupla (Table, int)
+    for table_name, (table, num_rows) in schemas.items():
+        assert isinstance(table, Table)
+        assert isinstance(num_rows, int)
+        assert table.name == table_name
 
 def test_custom_testing_sql():
     """Test para verificar la generación de SQL personalizado para testing"""

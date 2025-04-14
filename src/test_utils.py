@@ -7,12 +7,12 @@ from src.schema import Table, Column, ForeignKey, registry
 from src.generator import generate_insert_queries_in_order, generate_insert_query
 from src.utils import export_sql_to_file
 
-def generate_testing_schemas() -> Dict[Table, int]:
+def generate_testing_schemas() -> Dict[str, Tuple[Table, int]]:
     """
     Crea un conjunto completo de esquemas para testing con diferentes relaciones
     
     Devuelve:
-        Un diccionario con las tablas y el número de filas a generar para cada una
+        Un diccionario con nombres de tablas como claves y tuplas (tabla, num_filas) como valores
     """
     usuarios_table = Table(
         name="usuarios",
@@ -145,13 +145,13 @@ def generate_testing_schemas() -> Dict[Table, int]:
     
     # Retornar las tablas con el número de filas a generar para cada una
     return {
-        usuarios_table: 50,
-        perfiles_table: 40,
-        categorias_table: 10,
-        articulos_table: 100,
-        comentarios_table: 200,
-        etiquetas_table: 30,
-        articulos_etiquetas_table: 150
+        "usuarios": (usuarios_table, 50),
+        "perfiles": (perfiles_table, 40),
+        "categorias": (categorias_table, 10),
+        "articulos": (articulos_table, 100),
+        "comentarios": (comentarios_table, 200),
+        "etiquetas": (etiquetas_table, 30),
+        "articulos_etiquetas": (articulos_etiquetas_table, 150)
     }
 
 def generate_testing_sql(output_dir: str = "testing", prefix: str = "test_data") -> Tuple[int, int]:
@@ -168,7 +168,12 @@ def generate_testing_sql(output_dir: str = "testing", prefix: str = "test_data")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     
-    tables_and_rows = generate_testing_schemas()
+    schemas = generate_testing_schemas()
+    
+    # Convertir al formato esperado por generate_insert_queries_in_order
+    tables_and_rows = {}
+    for table, num_rows in schemas.values():
+        tables_and_rows[table] = num_rows
     
     queries = generate_insert_queries_in_order(tables_and_rows)
     
@@ -230,4 +235,144 @@ def generate_custom_testing_sql(tables_config: List[Tuple[str, List[Tuple[str, s
     
     export_sql_to_file(queries, output_file)
     
-    return output_file 
+    return output_file
+
+def create_related_schemas_example():
+    """
+    Crea un ejemplo de esquemas relacionados para demostrar el uso de llaves foráneas
+    
+    Devuelve:
+        Un diccionario con las tablas como claves y número de filas como valores
+    """
+    # Tabla de categorías de productos
+    categoria_table = Table(
+        name="categorias",
+        columns=[
+            Column(name="id", type="INTEGER", faker_provider="random_int", is_primary_key=True),
+            Column(name="nombre", type="VARCHAR(50)", faker_provider="word"),
+            Column(name="descripcion", type="TEXT", faker_provider="paragraph")
+        ],
+        primary_key="id"
+    )
+    
+    # Tabla de productos
+    productos_table = Table(
+        name="productos",
+        columns=[
+            Column(name="id", type="INTEGER", faker_provider="random_int", is_primary_key=True),
+            Column(name="nombre", type="VARCHAR(100)", faker_provider="catch_phrase"),
+            Column(name="precio", type="DECIMAL", faker_provider="random_int(min=100,max=10000)"),
+            Column(
+                name="categoria_id", 
+                type="INTEGER",
+                foreign_key=ForeignKey(
+                    column="categoria_id",
+                    references_table="categorias",
+                    references_column="id"
+                )
+            ),
+            Column(name="stock", type="INTEGER", faker_provider="random_int(min=0,max=100)"),
+            Column(name="codigo", type="VARCHAR(20)", faker_provider="bothify(text='??-####-????')")
+        ],
+        primary_key="id"
+    )
+    
+    # Tabla de clientes
+    clientes_table = Table(
+        name="clientes",
+        columns=[
+            Column(name="id", type="INTEGER", faker_provider="random_int", is_primary_key=True),
+            Column(name="nombre", type="VARCHAR(50)", faker_provider="first_name"),
+            Column(name="apellido", type="VARCHAR(50)", faker_provider="last_name"),
+            Column(name="email", type="VARCHAR(100)", faker_provider="email"),
+            Column(name="telefono", type="VARCHAR(20)", faker_provider="phone_number"),
+            Column(name="direccion", type="TEXT", faker_provider="address")
+        ],
+        primary_key="id"
+    )
+    
+    # Tabla de pedidos
+    pedidos_table = Table(
+        name="pedidos",
+        columns=[
+            Column(name="id", type="INTEGER", faker_provider="random_int", is_primary_key=True),
+            Column(
+                name="cliente_id", 
+                type="INTEGER",
+                foreign_key=ForeignKey(
+                    column="cliente_id",
+                    references_table="clientes",
+                    references_column="id"
+                )
+            ),
+            Column(name="fecha", type="DATE", faker_provider="date_this_year"),
+            Column(name="total", type="DECIMAL", faker_provider="random_int(min=1000,max=100000)"),
+            Column(name="estado", type="VARCHAR(20)", faker_provider="random_element(elements=('Pendiente', 'Pagado', 'Enviado', 'Entregado', 'Cancelado'))")
+        ],
+        primary_key="id"
+    )
+    
+    # Tabla de detalles de pedidos
+    detalles_pedido_table = Table(
+        name="detalles_pedido",
+        columns=[
+            Column(name="id", type="INTEGER", faker_provider="random_int", is_primary_key=True),
+            Column(
+                name="pedido_id", 
+                type="INTEGER",
+                foreign_key=ForeignKey(
+                    column="pedido_id",
+                    references_table="pedidos",
+                    references_column="id"
+                )
+            ),
+            Column(
+                name="producto_id", 
+                type="INTEGER",
+                foreign_key=ForeignKey(
+                    column="producto_id",
+                    references_table="productos",
+                    references_column="id"
+                )
+            ),
+            Column(name="cantidad", type="INTEGER", faker_provider="random_int(min=1,max=10)"),
+            Column(name="precio_unitario", type="DECIMAL", faker_provider="random_int(min=100,max=10000)"),
+            Column(name="subtotal", type="DECIMAL", faker_provider="random_int(min=100,max=100000)")
+        ],
+        primary_key="id"
+    )
+    
+    # Registrar las tablas en el registro global para que las relaciones funcionen
+    registry.register(categoria_table)
+    registry.register(productos_table)
+    registry.register(clientes_table)
+    registry.register(pedidos_table)
+    registry.register(detalles_pedido_table)
+    
+    # Retornar un diccionario donde las tablas son los valores, no las claves
+    tables_dict = {
+        categoria_table: 5,
+        productos_table: 20,
+        clientes_table: 10,
+        pedidos_table: 15,
+        detalles_pedido_table: 30
+    }
+    
+    return tables_dict
+
+def generate_example_sql(output_file: str = "datos_relacionados.sql"):
+    """
+    Genera un ejemplo completo de SQL con tablas relacionadas
+    
+    Args:
+        output_file: Ruta del archivo de salida
+    """
+    tables_and_rows = create_related_schemas_example()
+    
+    # Generar las consultas SQL en el orden correcto respetando las dependencias
+    queries = generate_insert_queries_in_order(tables_and_rows)
+    
+    # Exportar las consultas a un archivo
+    export_sql_to_file(queries, output_file)
+    
+    return len(queries), sum(tables_and_rows.values()) 

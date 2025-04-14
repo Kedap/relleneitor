@@ -47,6 +47,10 @@ def generate_insert_query(table: Table, num_rows: int) -> str:
                 else:
                     value = _infer_value_from_type(column.type)
             
+            # Asegurarse de que el valor no sea None
+            if value is None:
+                value = "NULL"
+                
             # Almacenar el valor generado para posible uso como llave foránea
             table.store_generated_value(column.name, value)
             values.append(value)

@@ -55,6 +55,16 @@ class Table:
     def get_generated_values(self, column_name: str) -> List[Any]:
         """Obtiene los valores generados para una columna específica."""
         return self._generated_values.get(column_name, [])
+    
+    def __hash__(self):
+        """Implementación del método hash para poder usar la tabla como clave en diccionarios."""
+        return hash(self.name)
+    
+    def __eq__(self, other):
+        """Implementación del método de igualdad para comparar tablas."""
+        if not isinstance(other, Table):
+            return False
+        return self.name == other.name
         
 @dataclass
 class TableRegistry:
