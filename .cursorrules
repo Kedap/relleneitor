@@ -5,6 +5,7 @@ Your strong background in debugging complex issues and optimizing code performan
 This project utilizes the following technologies:
 - Python 3.11+
 - The Faker library for generating synthetic data
+- Pytest for testing code
 - SQL (specifically for generating INSERT statements for testing or seeding databases)
 - Command-line interfaces for running Python scripts and managing file output
 
