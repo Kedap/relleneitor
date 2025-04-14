@@ -1,16 +1,26 @@
-from src.schema import Table, Column
+from src.schema import Table, Column, ForeignKey, registry
 from src.generator import generate_insert_query
+from examples.proveedores_shema import proveedores_table
 
 telefono_proveedor_table = Table(
     name="telefono_proveedor",
     columns=[
-        Column(name="id", type="INTEGER", faker_provider="random_int"),
-        Column(name="proveedor", type="INTEGER", faker_provider="random_int"),
+        Column(name="id", type="INTEGER", faker_provider="random_int", is_primary_key=True),
+        Column(
+            name="proveedor", 
+            type="INTEGER", 
+            foreign_key=ForeignKey(
+                column="proveedor",
+                references_table="proveedores",
+                references_column="rut"
+            )
+        ),
         Column(name="casa", type="TEXT", faker_provider="phone_number"),
         Column(name="movil", type="TEXT", faker_provider="phone_number"),
         Column(name="oficina", type="TEXT", faker_provider="phone_number"),
         Column(name="personal", type="TEXT", faker_provider="phone_number")
-    ]
+    ],
+    primary_key="id"
 )
 
 num_rows = 10

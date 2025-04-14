@@ -1,6 +1,6 @@
 from faker import Faker
-from typing import List
-from src.schema import Table, Column
+from typing import List, Dict, Any, Optional
+from src.schema import Table, Column, ForeignKey, registry
 import random
 from datetime import datetime
 
@@ -17,21 +17,38 @@ def generate_insert_query(table: Table, num_rows: int) -> str:
     Devuelve:
         Cadena que contiene una única sentencia SQL INSERT con varias filas
     """
+    # Registrar la tabla en el registro global si aún no está registrada
+    if table.name not in registry.tables:
+        registry.register(table)
+        
     columns = table.columns
     column_names = [column.name for column in columns]
     
     value_rows = []
     
+    # Antes de generar filas, verificar todas las llaves foráneas que no tengan datos
+    for column in columns:
+        if column.foreign_key and not registry.get_foreign_key_values(column.foreign_key):
+            raise ValueError(f"La tabla '{column.foreign_key.references_table}' debe generarse antes que '{table.name}' "
+                           f"ya que '{column.name}' hace referencia a '{column.foreign_key.references_column}'")
+    
     for _ in range(num_rows):
         values = []
         
         for column in columns:
-            # Usando un provider faker si es especificado, de lo contrario inferir desde el tipo según el tipo de dato
-            if column.faker_provider:
-                value = _get_value_from_provider(column.faker_provider)
-            else:
-                value = _infer_value_from_type(column.type)
+            value = None
             
+            # Si es una llave foránea, usar un valor de la tabla referenciada
+            if column.foreign_key:
+                value = _generate_foreign_key_value(column.foreign_key)
+            else:
+                if column.faker_provider:
+                    value = _get_value_from_provider(column.faker_provider)
+                else:
+                    value = _infer_value_from_type(column.type)
+            
+            # Almacenar el valor generado para posible uso como llave foránea
+            table.store_generated_value(column.name, value)
             values.append(value)
         
         # Formatear como una tupla para SQL
@@ -43,6 +60,87 @@ def generate_insert_query(table: Table, num_rows: int) -> str:
     query += ",\n".join(value_rows) + ";"
     
     return query
+
+def _generate_foreign_key_value(foreign_key: ForeignKey) -> str:
+    """
+    Genera un valor válido para una llave foránea
+    
+    Args:
+        foreign_key: Definición de la llave foránea
+        
+    Devuelve:
+        Un valor válido que existe en la tabla referenciada
+    """
+    values = registry.get_foreign_key_values(foreign_key)
+    
+    if not values:
+        raise ValueError(f"No se encontraron valores para la llave foránea en la tabla '{foreign_key.references_table}'")
+    
+    # Seleccionar un valor aleatorio de la tabla referenciada
+    value = random.choice(values)
+    
+    # Formatear el valor adecuadamente para SQL
+    if isinstance(value, str) and not value.startswith("'"):
+        return f"'{value}'"
+    return str(value)
+
+def generate_insert_queries_in_order(tables_and_rows: Dict[Table, int]) -> Dict[str, str]:
+    """
+    Genera consultas INSERT para múltiples tablas, respetando el orden de las dependencias de llaves foráneas
+    
+    Args:
+        tables_and_rows: Diccionario de tablas y número de filas a generar para cada una
+        
+    Devuelve:
+        Diccionario con nombres de tablas como claves y consultas INSERT como valores
+    """
+    # Ordenar las tablas basado en sus dependencias
+    ordered_tables = _order_tables_by_dependencies(list(tables_and_rows.keys()))
+    
+    # Generar consultas en el orden correcto
+    queries = {}
+    for table in ordered_tables:
+        num_rows = tables_and_rows[table]
+        queries[table.name] = generate_insert_query(table, num_rows)
+    
+    return queries
+
+def _order_tables_by_dependencies(tables: List[Table]) -> List[Table]:
+    """
+    Ordena las tablas basándose en sus dependencias de llaves foráneas
+    Las tablas sin dependencias van primero
+    """
+    # Registrar todas las tablas primero
+    for table in tables:
+        registry.register(table)
+    
+    result = []
+    visited = set()
+    
+    def visit(table):
+        if table.name in visited:
+            return
+        
+        # Encontrar dependencias
+        deps = []
+        for column in table.columns:
+            if column.foreign_key and column.foreign_key.references_table != table.name:  # Evitar auto-referencias
+                for t in tables:
+                    if t.name == column.foreign_key.references_table:
+                        deps.append(t)
+        
+        # Visitar dependencias primero
+        for dep in deps:
+            visit(dep)
+        
+        visited.add(table.name)
+        result.append(table)
+    
+    # Visitar cada tabla
+    for table in tables:
+        visit(table)
+        
+    return result
 
 def _get_value_from_provider(provider: str) -> str:
     """Obtener un valor de un provider faker específico"""
