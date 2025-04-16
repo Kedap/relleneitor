@@ -1,10 +1,11 @@
 from faker import Faker
-from typing import List, Dict, Any, Optional
-from src.schema import Table, Column, ForeignKey, registry
+from typing import List, Dict
+from src.schema import Table, ForeignKey, registry
 import random
 from datetime import datetime
 
 faker = Faker()
+
 
 def generate_insert_query(table: Table, num_rows: int) -> str:
     """
@@ -20,24 +21,28 @@ def generate_insert_query(table: Table, num_rows: int) -> str:
     # Registrar la tabla en el registro global si aún no está registrada
     if table.name not in registry.tables:
         registry.register(table)
-        
+
     columns = table.columns
     column_names = [column.name for column in columns]
-    
+
     value_rows = []
-    
+
     # Antes de generar filas, verificar todas las llaves foráneas que no tengan datos
     for column in columns:
-        if column.foreign_key and not registry.get_foreign_key_values(column.foreign_key):
-            raise ValueError(f"La tabla '{column.foreign_key.references_table}' debe generarse antes que '{table.name}' "
-                           f"ya que '{column.name}' hace referencia a '{column.foreign_key.references_column}'")
-    
+        if column.foreign_key and not registry.get_foreign_key_values(
+            column.foreign_key
+        ):
+            raise ValueError(
+                f"La tabla '{column.foreign_key.references_table}' debe generarse antes que '{table.name}' "
+                f"ya que '{column.name}' hace referencia a '{column.foreign_key.references_column}'"
+            )
+
     for _ in range(num_rows):
         values = []
-        
+
         for column in columns:
             value = None
-            
+
             # Si es una llave foránea, usar un valor de la tabla referenciada
             if column.foreign_key:
                 value = _generate_foreign_key_value(column.foreign_key)
@@ -46,68 +51,75 @@ def generate_insert_query(table: Table, num_rows: int) -> str:
                     value = _get_value_from_provider(column.faker_provider)
                 else:
                     value = _infer_value_from_type(column.type)
-            
+
             # Asegurarse de que el valor no sea None
             if value is None:
                 value = "NULL"
-                
+
             # Almacenar el valor generado para posible uso como llave foránea
             table.store_generated_value(column.name, value)
             values.append(value)
-        
+
         # Formatear como una tupla para SQL
         row_values = f"({', '.join(values)})"
         value_rows.append(row_values)
-    
+
     # Crear una sentencia INSERT con múltiples conjuntos de valores
     query = f"INSERT INTO {table.name} ({', '.join(column_names)}) VALUES \n"
     query += ",\n".join(value_rows) + ";"
-    
+
     return query
+
 
 def _generate_foreign_key_value(foreign_key: ForeignKey) -> str:
     """
     Genera un valor válido para una llave foránea
-    
+
     Args:
         foreign_key: Definición de la llave foránea
-        
+
     Devuelve:
         Un valor válido que existe en la tabla referenciada
     """
     values = registry.get_foreign_key_values(foreign_key)
-    
+
     if not values:
-        raise ValueError(f"No se encontraron valores para la llave foránea en la tabla '{foreign_key.references_table}'")
-    
+        raise ValueError(
+            f"No se encontraron valores para la llave foránea en la tabla '{foreign_key.references_table}'"
+        )
+
     # Seleccionar un valor aleatorio de la tabla referenciada
     value = random.choice(values)
-    
+
     # Formatear el valor adecuadamente para SQL
     if isinstance(value, str) and not value.startswith("'"):
         return f"'{value}'"
     return str(value)
 
-def generate_insert_queries_in_order(tables_and_rows: Dict[Table, int]) -> Dict[str, str]:
+
+def generate_insert_queries_in_order(
+    tables_and_rows: Dict[Table, int],
+) -> Dict[str, str]:
     """
     Genera consultas INSERT para múltiples tablas, respetando el orden de las dependencias de llaves foráneas
-    
+
     Args:
         tables_and_rows: Diccionario de tablas y número de filas a generar para cada una
-        
+
     Devuelve:
         Diccionario con nombres de tablas como claves y consultas INSERT como valores
     """
     # Ordenar las tablas basado en sus dependencias
     ordered_tables = _order_tables_by_dependencies(list(tables_and_rows.keys()))
-    
+
     # Generar consultas en el orden correcto
     queries = {}
     for table in ordered_tables:
         num_rows = tables_and_rows[table]
         queries[table.name] = generate_insert_query(table, num_rows)
-    
+
     return queries
+
 
 def _order_tables_by_dependencies(tables: List[Table]) -> List[Table]:
     """
@@ -117,34 +129,37 @@ def _order_tables_by_dependencies(tables: List[Table]) -> List[Table]:
     # Registrar todas las tablas primero
     for table in tables:
         registry.register(table)
-    
+
     result = []
     visited = set()
-    
+
     def visit(table):
         if table.name in visited:
             return
-        
+
         # Encontrar dependencias
         deps = []
         for column in table.columns:
-            if column.foreign_key and column.foreign_key.references_table != table.name:  # Evitar auto-referencias
+            if (
+                column.foreign_key and column.foreign_key.references_table != table.name
+            ):  # Evitar auto-referencias
                 for t in tables:
                     if t.name == column.foreign_key.references_table:
                         deps.append(t)
-        
+
         # Visitar dependencias primero
         for dep in deps:
             visit(dep)
-        
+
         visited.add(table.name)
         result.append(table)
-    
+
     # Visitar cada tabla
     for table in tables:
         visit(table)
-        
+
     return result
+
 
 def _get_value_from_provider(provider: str) -> str:
     """Obtener un valor de un provider faker específico"""
@@ -165,16 +180,17 @@ def _get_value_from_provider(provider: str) -> str:
         except AttributeError:
             return f"'unknown_provider:{provider}'"
 
+
 def _infer_value_from_type(column_type: str) -> str:
     """Infer an appropriate Faker provider based on column type"""
     column_type = column_type.upper()
-    
+
     if column_type in ("INTEGER", "INT", "SMALLINT", "BIGINT", "TINYINT"):
         return str(faker.random_int(min=0, max=1000))
-    
+
     elif column_type in ("DECIMAL", "NUMERIC", "FLOAT", "REAL", "DOUBLE"):
         return str(round(random.uniform(0.0, 1000.0), 2))
-    
+
     elif column_type in ("TEXT", "VARCHAR", "CHAR", "CLOB"):
         max_chars = 100  # Default
         if "(" in column_type:  # Como cuando es VARCHAR(50)
@@ -184,17 +200,17 @@ def _infer_value_from_type(column_type: str) -> str:
             except (IndexError, ValueError):
                 pass
         return f"'{faker.text(max_nb_chars=max_chars)}'"
-    
+
     elif column_type in ("BOOLEAN", "BOOL"):
         return str(faker.boolean()).lower()
-    
+
     elif column_type == "DATE":
         return f"'{faker.date()}'"
     elif column_type in ("DATETIME", "TIMESTAMP"):
         return f"'{faker.date_time().strftime('%Y-%m-%d %H:%M:%S')}'"
     elif column_type == "TIME":
         return f"'{faker.time()}'"
-    
+
     elif column_type == "EMAIL" or "EMAIL" in column_type:
         return f"'{faker.email()}'"
     elif column_type == "NAME" or "NAME" in column_type:
@@ -207,12 +223,13 @@ def _infer_value_from_type(column_type: str) -> str:
         return f"'{faker.phone_number()}'"
     elif "ADDRESS" in column_type:
         return f"'{faker.address().replace('\n', ', ')}'"
-    
+
     elif column_type in ("BLOB", "BINARY", "VARBINARY"):
         return f"X'{faker.hexify('?' * 10)}'"
-    
+
     else:
         return f"'Tipo desconocido:{column_type}'"
+
 
 def _format_value(value) -> str:
     """Formatear un valor para incluir en SQL"""
@@ -227,5 +244,3 @@ def _format_value(value) -> str:
     else:
         # Escapar comillas simples para SQL
         return f"'{str(value).replace('\'', '\'\'')}'"
-            
-            
