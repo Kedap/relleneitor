@@ -56,9 +56,6 @@ def generate_insert_query(table: Table, num_rows: int) -> str:
             if value is None:
                 value = "NULL"
 
-            # Eliminar comillas si existen
-            if isinstance(value, str) and value.startswith("'") and value.endswith("'"):
-                value = value[1:-1]
             table.store_generated_value(column.name, value)
             values.append(value)
 
