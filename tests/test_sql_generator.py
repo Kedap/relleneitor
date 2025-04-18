@@ -46,9 +46,6 @@ def related_tables():
     # Registrar la tabla de usuarios primero
     registry.register(users_table)
 
-    # Generar IDs de usuarios primero
-    users_sql = generate_insert_query(users_table, 5)
-
     # Tabla de posts que depende de users
     posts_table = Table(
         name="posts",
@@ -66,7 +63,9 @@ def related_tables():
         ],
     )
 
-    return {users_table: 5, posts_table: 10}  # 5 usuarios  # 10 posts
+    registry.register(posts_table)
+
+    return {users_table: 5, posts_table: 5}
 
 
 def test_generate_insert_query(simple_table):
@@ -89,6 +88,7 @@ def test_generate_insert_query(simple_table):
 
 def test_foreign_key_relationship(related_tables):
     """Test para verificar que las relaciones de llaves foráneas son válidas"""
+
     # Generar consultas en el orden correcto
     queries = generate_insert_queries_in_order(related_tables)
 
@@ -103,26 +103,27 @@ def test_foreign_key_relationship(related_tables):
 
     # Extraer los valores de ID de usuarios generados
     users_sql = queries["users"]
-    user_ids = []
+    user_ids = extract_ids_from_sql(users_sql)
 
-    # Extraer los IDs de usuario usando un enfoque simple
-    lines = users_sql.split("\n")
-    for line in lines:
-        if line.startswith("("):
-            # Extraer el primer valor (ID) de la tupla
-            id_value = line.split(",")[0].strip("(")
-            user_ids.append(id_value)
-
-    # Verificar que los posts hacen referencia a IDs de usuarios válidos
+    # Extraer los user_id de los posts
     posts_sql = queries["posts"]
+    post_user_ids = []
     for line in posts_sql.split("\n"):
         if line.startswith("("):
             # El user_id es el tercer valor en la tupla
-            values = line.split(",")
+            values = parse_sql_values(line)
             if len(values) >= 3:
                 user_id = values[2].strip()
-                # Verificar que este ID existe en la lista de IDs de usuarios
-                assert any(user_id == id for id in user_ids)
+                # Eliminar comillas si existen
+                if user_id.startswith("'") and user_id.endswith("'"):
+                    user_id = user_id[1:-1]
+                post_user_ids.append(user_id)
+
+    for user_id in post_user_ids:
+        assert user_id in user_ids, f"El ID de usuario {user_id} no es válido."
+
+    # Asegurarse de que los IDs de usuario sean únicos
+    assert len(user_ids) == len(set(user_ids)), "Los IDs de usuario no son únicos."
 
 
 def test_generate_testing_schemas():
@@ -221,3 +222,45 @@ def test_export_sql_to_file():
             assert "-- Inserciones para la tabla tabla2" in content
             assert "INSERT INTO tabla1" in content
             assert "INSERT INTO tabla2" in content
+
+
+def extract_ids_from_sql(sql):
+    """Extrae los IDs (primer campo) de una consulta SQL"""
+    ids = []
+    for line in sql.split("\n"):
+        if line.startswith("("):
+            # Extraer el primer valor (ID) de la tupla
+            id_value = line.split(",")[0].strip("(").strip()
+            # Eliminar comillas si existen
+            if id_value.startswith("'") and id_value.endswith("'"):
+                id_value = id_value[1:-1]
+            ids.append(id_value)
+    return ids
+
+
+def parse_sql_values(values_line):
+    """
+    Analiza una línea de valores SQL para extraer cada valor individual
+    respetando las comillas, etc.
+    """
+    # Eliminar los paréntesis externos
+    values_str = values_line.strip().strip("(),")
+
+    result = []
+    current = ""
+    in_quotes = False
+
+    for char in values_str:
+        if char == "'" and (len(current) == 0 or current[-1] != "\\"):
+            in_quotes = not in_quotes
+            current += char
+        elif char == "," and not in_quotes:
+            result.append(current.strip())
+            current = ""
+        else:
+            current += char
+
+    if current:
+        result.append(current.strip())
+
+    return result
