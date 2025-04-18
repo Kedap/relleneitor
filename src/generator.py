@@ -56,7 +56,9 @@ def generate_insert_query(table: Table, num_rows: int) -> str:
             if value is None:
                 value = "NULL"
 
-            # Almacenar el valor generado para posible uso como llave foránea
+            # Eliminar comillas si existen
+            if isinstance(value, str) and value.startswith("'") and value.endswith("'"):
+                value = value[1:-1]
             table.store_generated_value(column.name, value)
             values.append(value)
 
@@ -91,9 +93,9 @@ def _generate_foreign_key_value(foreign_key: ForeignKey) -> str:
     # Seleccionar un valor aleatorio de la tabla referenciada
     value = random.choice(values)
 
-    # Formatear el valor adecuadamente para SQL
-    if isinstance(value, str) and not value.startswith("'"):
-        return f"'{value}'"
+    # Asegurarse de que los valores de las llaves foráneas no tengan comillas adicionales
+    if isinstance(value, str) and value.isdigit():
+        return value
     return str(value)
 
 
@@ -243,4 +245,7 @@ def _format_value(value) -> str:
         return f"'{value.strftime('%Y-%m-%d %H:%M:%S')}'"
     else:
         # Escapar comillas simples para SQL
-        return f"'{str(value).replace('\'', '\'\'')}'"
+        # Asegurarse de que los valores de las llaves foráneas no tengan comillas adicionales
+        if isinstance(value, str) and value.isdigit():
+            return value
+        return f"'{str(value).replace("'", "''")}'"
