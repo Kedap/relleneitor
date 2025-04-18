@@ -19,6 +19,8 @@ Relleneitor es una herramienta Python diseñada para generar datos sintéticos y
 ## Instalación
 
 ```bash
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -238,4 +240,3 @@ Las contribuciones son bienvenidas. Por favor, asegúrate de:
 1. Seguir las convenciones de código PEP 8
 2. Incluir pruebas para nuevas funcionalidades
 3. Actualizar la documentación según sea necesario
-
