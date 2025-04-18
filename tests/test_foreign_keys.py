@@ -19,7 +19,7 @@ def clear_registry():
 
 
 @pytest.fixture
-def complex_schema(clear_registry):
+def complex_schema():
     """Fixture para crear un esquema complejo con múltiples relaciones"""
     return create_related_schemas_example()
 
@@ -210,6 +210,9 @@ def extract_ids_from_sql(sql):
         if line.startswith("("):
             # Extraer el primer valor (ID) de la tupla
             id_value = line.split(",")[0].strip("(").strip()
+            # Eliminar comillas si existen
+            if id_value.startswith("'") and id_value.endswith("'"):
+                id_value = id_value[1:-1]
             ids.append(id_value)
     return ids
 
@@ -223,6 +226,9 @@ def extract_fk_from_sql(sql, fk_position):
             if len(values) > fk_position:
                 id_value = values[0]
                 fk_value = values[fk_position]
+                # Eliminar comillas si existen
+                if fk_value.startswith("'") and fk_value.endswith("'"):
+                    fk_value = fk_value[1:-1]
                 data.append((id_value, fk_value))
     return data
 
