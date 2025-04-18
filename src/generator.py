@@ -49,6 +49,8 @@ def generate_insert_query(table: Table, num_rows: int) -> str:
             else:
                 if column.faker_provider:
                     value = _get_value_from_provider(column.faker_provider)
+                elif column.custom_provider:
+                    value = column.custom_provider()
                 else:
                     value = _infer_value_from_type(column.type)
 

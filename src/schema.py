@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Callable
 
 
 @dataclass
@@ -16,6 +16,7 @@ class Column:
     name: str
     type: str
     faker_provider: Optional[str] = None
+    custom_provider: Optional[Callable[[], str]] = None
     is_primary_key: bool = False
     foreign_key: Optional[ForeignKey] = None
     constraints: Optional[List[str]] = None
