@@ -97,7 +97,7 @@ def test_explicit_primary_key():
     assert table.columns[1].is_primary_key == True
 
 
-def test_store_and_retrieve_values(clear_registry):
+def test_store_and_retrieve_values():
     """Test para verificar el almacenamiento y recuperación de valores en tablas"""
     table = Table(
         name="test_values",
@@ -124,7 +124,7 @@ def test_store_and_retrieve_values(clear_registry):
     assert "Test2" in nombre_values
 
 
-def test_ordering_by_dependencies(complex_schema, clear_registry):
+def test_ordering_by_dependencies(complex_schema):
     """Test para verificar que las tablas se ordenan correctamente según sus dependencias"""
     # Generar consultas en el orden correcto
     queries = generate_insert_queries_in_order(complex_schema)
@@ -139,7 +139,7 @@ def test_ordering_by_dependencies(complex_schema, clear_registry):
     assert order_list.index("productos") < order_list.index("detalles_pedido")
 
 
-def test_foreign_key_validity(complex_schema, clear_registry):
+def test_foreign_key_validity(complex_schema):
     """Test para verificar que las llaves foráneas son válidas"""
     # Generar consultas en el orden correcto
     queries = generate_insert_queries_in_order(complex_schema)
@@ -176,7 +176,7 @@ def test_foreign_key_validity(complex_schema, clear_registry):
                 assert producto_id in producto_ids
 
 
-def test_error_on_invalid_foreign_key(clear_registry):
+def test_error_on_invalid_foreign_key():
     """Test para verificar que se lanza un error cuando una FK referencia una tabla inexistente"""
     # Tabla con FK a una tabla que no existe
     invalid_table = Table(
