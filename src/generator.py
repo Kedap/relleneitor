@@ -5,6 +5,7 @@ import random
 from datetime import datetime
 
 faker = Faker()
+faker = Faker("es_MX")
 
 
 def generate_insert_query(table: Table, num_rows: int) -> str:
