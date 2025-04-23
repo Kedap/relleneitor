@@ -162,6 +162,15 @@ def _order_tables_by_dependencies(tables: List[Table]) -> List[Table]:
     return result
 
 
+def _relleneitor_email_provider():
+    email = faker.email()
+    if "@" in email:
+        local_part, _ = email.split("@", 1)
+        new_domain = faker.domain_name()
+        email = f"{local_part}@{new_domain}"
+    return f"'{email}'"
+
+
 def _get_value_from_provider(provider: str) -> str:
     """Obtener un valor de un provider faker específico"""
     # Dividir el provider para manejar parámetros como "random_int(min=1,max=100)"
@@ -174,6 +183,9 @@ def _get_value_from_provider(provider: str) -> str:
             max_val = int(params.get("max", 1000))
             return str(faker.random_int(min=min_val, max=max_val))
     else:
+        if provider == "relleneitor_email":
+            return _relleneitor_email_provider()
+
         # Usar getattr para llamar al método del provider dinámicamente
         try:
             provider_method = getattr(faker, provider)

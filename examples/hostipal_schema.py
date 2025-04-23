@@ -41,7 +41,7 @@ pacientes_table = Table(
         Column(name="nombre_completo", type="TEXT", faker_provider="name"),
         Column(name="edad", type="INTEGER", custom_provider=edad_provider),
         Column(name="genero", type="TEXT", custom_provider=genero_provider),
-        Column(name="correo", type="TEXT", faker_provider="email"),
+        Column(name="correo", type="TEXT", faker_provider="relleneitor_email"),
     ],
 )
 
