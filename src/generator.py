@@ -4,7 +4,7 @@ from src.schema import Table, ForeignKey, registry
 import random
 from datetime import datetime
 
-faker = Faker()
+# faker = Faker()
 faker = Faker("es_MX")
 
 
