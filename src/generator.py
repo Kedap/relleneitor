@@ -47,6 +47,11 @@ def generate_insert_query(table: Table, num_rows: int) -> str:
             # Si es una llave foránea, usar un valor de la tabla referenciada
             if column.foreign_key:
                 value = _generate_foreign_key_value(column.foreign_key)
+            elif column.primary_key_autoincrement:
+                if len(value_rows) == 0:
+                    id_incremental = column.start_autoincrement
+                id_incremental = column.start_autoincrement + len(value_rows)
+                value = f"{id_incremental}"
             else:
                 if column.faker_provider:
                     value = _get_value_from_provider(column.faker_provider)

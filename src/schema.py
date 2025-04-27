@@ -18,6 +18,8 @@ class Column:
     faker_provider: Optional[str] = None
     custom_provider: Optional[Callable[[], str]] = None
     is_primary_key: bool = False
+    primary_key_autoincrement: bool = False
+    start_autoincrement: int = 1
     foreign_key: Optional[ForeignKey] = None
     constraints: Optional[List[str]] = None
 
