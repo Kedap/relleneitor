@@ -11,10 +11,16 @@ from contextlib import contextmanager
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class MariaDBManager:
-    def __init__(self, host: str = "localhost", user: str = "root", 
-                 password: str = "", database: str = "relleneitor_db", 
-                 port: int = 3306):
+    def __init__(
+        self,
+        host: str = "localhost",
+        user: str = "root",
+        password: str = "",
+        database: str = "relleneitor_db",
+        port: int = 3306,
+    ):
         """
         Inicializa el gestor de base de datos MariaDB
 
@@ -43,7 +49,7 @@ class MariaDBManager:
                 user=self.user,
                 password=self.password,
                 database=self.database,
-                port=self.port
+                port=self.port,
             )
             logger.info(f"Conexión exitosa a la base de datos {self.database}")
             yield conn
@@ -51,7 +57,7 @@ class MariaDBManager:
             logger.error(f"Error al conectar a la base de datos: {e}")
             raise
         finally:
-            if 'conn' in locals():
+            if "conn" in locals():
                 conn.close()
                 logger.info("Conexión cerrada")
 
@@ -64,7 +70,7 @@ class MariaDBManager:
         """
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            
+
             try:
                 for table_name, query in queries.items():
                     logger.info(f"Ejecutando queries para la tabla {table_name}")
@@ -84,4 +90,4 @@ class MariaDBManager:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Método para usar con el contexto 'with'"""
-        pass  # La conexión se cierra automáticamente en el context manager 
+        pass  # La conexión se cierra automáticamente en el context manager
