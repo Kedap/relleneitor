@@ -5,6 +5,12 @@ Ejemplo de generación de datos para un hospital y subida a MariaDB
 from src.schema import Table, Column, ForeignKey
 from src.generator import generate_insert_queries_in_order
 from src.database import MariaDBManager
+import random
+
+
+def estado_provider():
+    Estados = ["Pendiente", "Atendido", "Cancelado"]
+    return f"'{random.choice(Estados)}'"
 
 
 def create_hospital_schema():
@@ -13,63 +19,84 @@ def create_hospital_schema():
     """
     # Tabla de especialidades médicas
     especialidades = Table(
-        name="especialidades",
+        name="Especialidades",
         columns=[
-            Column("id", "INTEGER", is_primary_key=True),
-            Column("nombre", "VARCHAR(100)"),
+            Column(
+                "id_especialidad",
+                "INTEGER",
+                is_primary_key=True,
+                primary_key_autoincrement=True,
+            ),
+            Column("nombre", "TEXT"),
             Column("descripcion", "TEXT"),
         ],
     )
 
     # Tabla de médicos
     medicos = Table(
-        name="medicos",
+        name="Doctores",
         columns=[
-            Column("id", "INTEGER", is_primary_key=True),
-            Column("nombre", "VARCHAR(100)"),
-            Column("apellido", "VARCHAR(100)"),
-            Column("email", "EMAIL"),
+            Column(
+                "id_doctor",
+                "INTEGER",
+                is_primary_key=True,
+                primary_key_autoincrement=True,
+            ),
+            Column("nombre", "VARCHAR(100)", faker_provider="name"),
+            Column("email", "EMAIL", faker_provider="relleneitor_email"),
             Column("telefono", "PHONE"),
             Column(
                 "especialidad_id",
                 "INTEGER",
-                foreign_key=ForeignKey("especialidad_id", "especialidades", "id"),
+                foreign_key=ForeignKey(
+                    "especialidad_id", "Especialidades", "id_especialidad"
+                ),
             ),
         ],
     )
 
     # Tabla de pacientes
     pacientes = Table(
-        name="pacientes",
+        name="Pacientes",
         columns=[
-            Column("id", "INTEGER", is_primary_key=True),
-            Column("nombre", "VARCHAR(100)"),
-            Column("apellido", "VARCHAR(100)"),
+            Column(
+                "id_paciente",
+                "INTEGER",
+                is_primary_key=True,
+                primary_key_autoincrement=True,
+            ),
+            Column("nombre", "VARCHAR(100)", faker_provider="name"),
             Column("fecha_nacimiento", "DATE"),
-            Column("email", "EMAIL"),
+            Column("email", "EMAIL", faker_provider="relleneitor_email"),
             Column("telefono", "PHONE"),
-            Column("direccion", "ADDRESS"),
+            Column(
+                "direccion", "ADDRESS", faker_provider="address"
+            ),  # Importante utilizar el faker_provider="address" porque de otra forma no se formatea correctamente
         ],
     )
 
     # Tabla de citas
     citas = Table(
-        name="citas",
+        name="Citas",
         columns=[
-            Column("id", "INTEGER", is_primary_key=True),
+            Column(
+                "id_cita",
+                "INTEGER",
+                is_primary_key=True,
+                primary_key_autoincrement=True,
+            ),
             Column(
                 "paciente_id",
                 "INTEGER",
-                foreign_key=ForeignKey("paciente_id", "pacientes", "id"),
+                foreign_key=ForeignKey("paciente_id", "Pacientes", "id_paciente"),
             ),
             Column(
-                "medico_id",
+                "doctor_id",
                 "INTEGER",
-                foreign_key=ForeignKey("medico_id", "medicos", "id"),
+                foreign_key=ForeignKey("doctor_id", "Doctores", "id_doctor"),
             ),
             Column("fecha_hora", "DATETIME"),
-            Column("motivo", "TEXT"),
-            Column("estado", "VARCHAR(50)"),
+            Column("estado", "VARCHAR(50)", custom_provider=estado_provider),
         ],
     )
 
@@ -91,8 +118,7 @@ def main():
     # Generar las queries
     queries = generate_insert_queries_in_order(rows_per_table)
 
-    # Configuración de la base de datos (usando valores por defecto)
-    db = MariaDBManager()  # Usa todos los valores por defecto
+    db = MariaDBManager(database="Hospital_test", user="userdb", password="12345678")
 
     # Exportar a MariaDB
     try:
